@@ -1,4 +1,4 @@
-# from usersupport.models import TelegramUser
+# from app.models import TelegramUser
 from asgiref.sync import sync_to_async
 
 
