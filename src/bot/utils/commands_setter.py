@@ -1,11 +1,13 @@
 from aiogram import types
 
+from bot.config.loader import bot
 
-async def set_default_commands(dp):
-    await dp.bot.set_my_commands([
-        types.BotCommand("start", "Запустить бота"),
-        types.BotCommand("help", "Помощь"),
-        types.BotCommand("test", "Тест"),
-        types.BotCommand("form", "Форма"),
-        types.BotCommand("menu", "Меню"),
+
+async def set_default_commands():
+    await bot.set_my_commands([
+        types.BotCommand("/start", "Начать"),
     ])
+
+
+async def delete_default_commands():
+    await bot.delete_my_commands()
