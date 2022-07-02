@@ -5,7 +5,7 @@ from bot.config.config import ADMINS
 
 
 class AdminFilter(BoundFilter):
-    key = 'is_admin'
+    key = "is_admin"
 
     def __init__(self, is_admin):
         self.is_admin = is_admin

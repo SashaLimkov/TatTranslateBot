@@ -11,6 +11,12 @@ async def init_db(message: types.Message):
         if original == "":
             continue
         r: OriginalString = await t_db.add_original(original, len(original))
-        await t_db.add_tatsoft(r, data[original]["Tatsoft"], len(data[original]["Tatsoft"]))
-        await t_db.add_yandex(r, data[original]["Yandex"], len(data[original]["Yandex"]))
-        await t_db.add_google(r, data[original]["Google"], len(data[original]["Google"]))
+        await t_db.add_tatsoft(
+            r, data[original]["Tatsoft"], len(data[original]["Tatsoft"])
+        )
+        await t_db.add_yandex(
+            r, data[original]["Yandex"], len(data[original]["Yandex"])
+        )
+        await t_db.add_google(
+            r, data[original]["Google"], len(data[original]["Google"])
+        )

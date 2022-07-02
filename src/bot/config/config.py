@@ -4,7 +4,9 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
-ADMINS = [390959255, ]
+ADMINS = [
+    390959255,
+]
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 PGUSER = os.getenv("PGUSER")
 PGPASSWORD = os.getenv("PGPASSWORD")
