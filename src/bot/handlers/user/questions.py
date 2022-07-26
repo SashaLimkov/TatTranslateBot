@@ -12,7 +12,7 @@ from bot.services.db import translate as translate_db
 from bot.services.db import user as user_db
 from bot.states import UserState
 from bot.utils.translate_worker import get_translates
-
+from bot.keyboards import inline as ik
 
 async def second_q(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
@@ -24,7 +24,7 @@ async def second_q(call: types.CallbackQuery, state: FSMContext):
     translations = {"Y": yandex, "T": tatsoft}
     await state.update_data({"1": call.data})
     await UserState.second.set()
-    await new_message(call.message, translations, text, original)
+    await new_message(call, translations, text, original)
 
 
 async def third_q(call: types.CallbackQuery, state: FSMContext):
@@ -37,7 +37,7 @@ async def third_q(call: types.CallbackQuery, state: FSMContext):
     translations = {"T": tatsoft, "G": google}
     await state.update_data({"2": call.data})
     await UserState.third.set()
-    await new_message(call.message, translations, text, original)
+    await new_message(call, translations, text, original)
 
 
 async def finish(call: types.CallbackQuery, state: FSMContext):
@@ -45,22 +45,34 @@ async def finish(call: types.CallbackQuery, state: FSMContext):
     await state.update_data({"3": call.data})
     data = await state.get_data()
     val = list(data.values())
-    original = val[0]
-    for answer in val[1:]:
+    original = data.get('original')
+    for answer in val[2:]:
         await add_score_by_key(answer)
     await correct_score(original)
     user = await user_db.get_user(call.message.chat.id)
     await user_db.update_user_answers(user, original)
     q = await get_new_q(await user_db.get_user(call.message.chat.id))
-    await send_first_q(q, call.message, state)
+    await send_first_q(q, call, state)
+
+
+async def skip(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    data = await state.get_data()
+    original = data.get("original")
+    user = await user_db.get_user(call.message.chat.id)
+    await user_db.update_user_answers(user, original)
+    q = await get_new_q(await user_db.get_user(call.message.chat.id))
+    await send_first_q(q, call, state)
 
 
 async def stop(call: types.CallbackQuery):
     await call.answer()
+    await UserState.mm.set()
     await bot.edit_message_text(
         chat_id=call.message.chat.id,
+        text="Текст меню",
+        reply_markup=await ik.main_menu(),
         message_id=call.message.message_id,
-        text="Вы завершили опрос, напишите /start чтобы начать новый",
     )
 
 

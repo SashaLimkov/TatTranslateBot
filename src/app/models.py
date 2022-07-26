@@ -23,6 +23,22 @@ class TelegramUser(TimeBasedModel):
     name = models.CharField(max_length=255, verbose_name="Telegram Имя пользователя")
 
 
+class User(TimeBasedModel):
+    class Meta:
+        verbose_name = "Зарегестрированный пользоваетель"
+        verbose_name_plural = "Зарегестрированные пользоваетели"
+
+    tg_user = models.OneToOneField(TelegramUser,
+                                   related_name="user",
+                                   on_delete=models.CASCADE,
+                                   verbose_name="Зарегестрированный Пользователь",
+                                   )
+    age = models.CharField(max_length=1, verbose_name="Возраст", )
+    sex = models.IntegerField(verbose_name="Гендер")
+    education = models.CharField(max_length=255, verbose_name="Уровень образования")
+    skill = models.CharField(max_length=255, verbose_name="Уровень знания языка")
+
+
 class OriginalString(TimeBasedModel):
     class Meta:
         verbose_name = "Оригинал строки"
