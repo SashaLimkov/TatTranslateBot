@@ -6,6 +6,7 @@ from bot.services.gsheets.test import get_data
 
 
 async def init_db(message: types.Message):
+    print(111111111111)
     data = await get_data()
     for original in list(data.keys()):
         if original == "":

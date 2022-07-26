@@ -27,30 +27,13 @@ class OriginalAdmin(admin.ModelAdmin):
             % (obj.get_yandex.pk, obj.get_yandex.translate)
         )
 
-    # def score(self, obj):
-    #     y = obj.get_yandex.yandex_score
-    #     g = obj.get_google.google_score
-    #     t = obj.get_tatsoft.tatsoft_score
-    #     return f"{y + g + t}"
-    #
-    # score.admin_order_field = 'score'
-    #
-    # def queryset(self, request):
-    #     print(models.Sum('yandextranslate__yandex_score', 'tatsofttranslate__tatsoft_score',
-    #                      'googletranslate__google_score'))
-    #     return super(OriginalAdmin, self).get_queryset(
-    #         request,
-    #     ).annotate(models.Sum('yandextranslate__yandex_score', 'tatsofttranslate__tatsoft_score',
-    #                           'googletranslate__google_score'))
-
     def y_score(self, obj):
         return f"{obj.get_yandex.yandex_score}"
 
     def tatsoft(self, obj):
         return mark_safe(
             '<a href="/admin/app/tatsofttranslate/%s/change/">%s</a>'
-            % (obj.get_tatsoft.pk, obj.get_tatsoft.translate)
-        )
+            % (obj.get_tatsoft.pk, obj.get_tatsoft.translate))
 
     def t_score(self, obj):
         return f"{obj.get_tatsoft.tatsoft_score}"
@@ -58,8 +41,7 @@ class OriginalAdmin(admin.ModelAdmin):
     def google(self, obj):
         return mark_safe(
             '<a href="/admin/app/googletranslate/%s/change/">%s</a>'
-            % (obj.get_google.pk, obj.get_google.translate)
-        )
+            % (obj.get_google.pk, obj.get_google.translate))
 
     def g_score(self, obj):
         return f"{obj.get_google.google_score}"

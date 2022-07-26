@@ -1,6 +1,5 @@
 from aiogram import types
-
-from aiogram import types
+from aiogram.dispatcher import FSMContext
 
 from app.models import (
     GoogleTranslate,
@@ -15,36 +14,49 @@ from bot.states import UserState
 from bot.utils.translate_worker import get_translates
 
 
-async def second_q(call: types.CallbackQuery):
-    original = await add_score_by_key(call)
+async def second_q(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    data = await state.get_data()
+    original = data.get("original")
     yandex, tatsoft, google = await get_translates(original)
-    text = f"Какой перевод для данного предложения лучше?\n<b>{original.string}</b>\n\n"
-    text += f"1){yandex.translate}\n2){tatsoft.translate}"
+    text = f"Какой перевод для данного предложения лучше?\n\n<b>{original.string}</b>\n\n"
+    text += f"1) {yandex.translate}\n2) {tatsoft.translate}"
     translations = {"Y": yandex, "T": tatsoft}
+    await state.update_data({"1": call.data})
     await UserState.second.set()
     await new_message(call.message, translations, text, original)
 
 
-async def third_q(call: types.CallbackQuery):
-    original = await add_score_by_key(call)
+async def third_q(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    data = await state.get_data()
+    original = data.get("original")
     yandex, tatsoft, google = await get_translates(original)
-    text = f"Какой перевод для данного предожения лучше?\n<b>{original.string}</b>\n\n"
-    text += f"1){tatsoft.translate}\n2){google.translate}"
+    text = f"Какой перевод для данного предожения лучше?\n\n<b>{original.string}</b>\n\n"
+    text += f"1) {tatsoft.translate}\n2) {google.translate}"
     translations = {"T": tatsoft, "G": google}
+    await state.update_data({"2": call.data})
     await UserState.third.set()
     await new_message(call.message, translations, text, original)
 
 
-async def finish(call: types.CallbackQuery):
-    original = await add_score_by_key(call)
+async def finish(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    await state.update_data({"3": call.data})
+    data = await state.get_data()
+    val = list(data.values())
+    original = val[0]
+    for answer in val[1:]:
+        await add_score_by_key(answer)
     await correct_score(original)
     user = await user_db.get_user(call.message.chat.id)
     await user_db.update_user_answers(user, original)
     q = await get_new_q(await user_db.get_user(call.message.chat.id))
-    await send_first_q(q, call.message)
+    await send_first_q(q, call.message, state)
 
 
 async def stop(call: types.CallbackQuery):
+    await call.answer()
     await bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -52,13 +64,11 @@ async def stop(call: types.CallbackQuery):
     )
 
 
-async def add_score_by_key(call: types.CallbackQuery):
-    if call.data.startswith("sb"):
-        data = call.data.split("_")
-        original = await translate_db.get_original(data[1])
-        return original
-    elif call.data.startswith("sc"):
-        data = call.data.split("_")
+async def add_score_by_key(answer: str):
+    if answer.startswith("sb"):
+        pass
+    elif answer.startswith("sc"):
+        data = answer.split("_")
         first_key, second_key = data[1], data[3]
         first_id, second_id = data[2], data[4]
         p = {first_key: first_id, second_key: second_id}
@@ -67,7 +77,6 @@ async def add_score_by_key(call: types.CallbackQuery):
                 g_translation: GoogleTranslate = await translate_db.get_google_translate_by_id(
                     v
                 )
-                original = g_translation.original
                 await translate_db.update_google_score(
                     v, g_translation.google_score + 1
                 )
@@ -75,7 +84,6 @@ async def add_score_by_key(call: types.CallbackQuery):
                 t_translation: TatsoftTranslate = (
                     await translate_db.get_tatsoft_translate_by_id(v)
                 )
-                original = t_translation.original
                 await translate_db.update_tatsoft_score(
                     v, t_translation.tatsoft_score + 1
                 )
@@ -84,47 +92,40 @@ async def add_score_by_key(call: types.CallbackQuery):
                     v
                 )
                 score = y_translation.yandex_score
-                original = y_translation.original
                 await translate_db.update_yandex_score(
                     v, score + 1
                 )
-
-    translation = call.data.split("_")
-    key = translation[0]
-    if key == "G":
-        g_translation: GoogleTranslate = await translate_db.get_google_translate_by_id(
-            translation[1]
-        )
-        original = g_translation.original
-        await translate_db.update_google_score(
-            translation[1], g_translation.google_score + 1
-        )
-    elif key == "T":
-        t_translation: TatsoftTranslate = (
-            await translate_db.get_tatsoft_translate_by_id(translation[1])
-        )
-        original = t_translation.original
-        await translate_db.update_tatsoft_score(
-            translation[1], t_translation.tatsoft_score + 1
-        )
-    elif key == "Y":
-        y_translation: YandexTranslate = await translate_db.get_yandex_translate_by_id(
-            translation[1]
-        )
-        score = y_translation.yandex_score
-        original = y_translation.original
-        await translate_db.update_yandex_score(
-            translation[1], score + 1
-        )
-
-    return original
+    else:
+        translation = answer.split("_")
+        key = translation[0]
+        if key == "G":
+            g_translation: GoogleTranslate = await translate_db.get_google_translate_by_id(
+                translation[1]
+            )
+            await translate_db.update_google_score(
+                translation[1], g_translation.google_score + 1
+            )
+        elif key == "T":
+            t_translation: TatsoftTranslate = (
+                await translate_db.get_tatsoft_translate_by_id(translation[1])
+            )
+            await translate_db.update_tatsoft_score(
+                translation[1], t_translation.tatsoft_score + 1
+            )
+        else:
+            y_translation: YandexTranslate = await translate_db.get_yandex_translate_by_id(
+                translation[1]
+            )
+            score = y_translation.yandex_score
+            await translate_db.update_yandex_score(
+                translation[1], score + 1
+            )
 
 
 async def correct_score(q):
     original = await translate_db.get_original(q.pk)
     yandex, tatsoft, google = await get_translates(original)
     if google.translate == tatsoft.translate:
-        print(2)
         t, g = tatsoft.tatsoft_score, google.google_score
         r = max(t, g)
         await translate_db.update_tatsoft_score(tatsoft.pk, r)
@@ -132,7 +133,6 @@ async def correct_score(q):
     elif yandex.translate == tatsoft.translate:
         y, t = yandex.yandex_score, tatsoft.tatsoft_score
         r = max(y, t)
-        print(y, t, r)
         await translate_db.update_yandex_score(yandex.pk, r)
         await translate_db.update_tatsoft_score(tatsoft.pk, r)
     elif tatsoft.translate == google.translate:

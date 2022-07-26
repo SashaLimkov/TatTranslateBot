@@ -1,6 +1,7 @@
 import random
 
 from aiogram import types
+from aiogram.dispatcher import FSMContext
 
 from bot.config.loader import bot
 from bot.keyboards import inline as ik
@@ -11,14 +12,19 @@ from bot.utils import deleter
 from bot.utils.translate_worker import get_translates, get_translations_dict
 
 
-async def start_cmd(message: types.Message):
+async def start_cmd(message: types.Message, state: FSMContext):
     await deleter.delete_user_message(message)
     user_id = message.chat.id
     user = await user_db.get_user(user_id)
     if not user:
         user = await user_db.add_user(user_id, message.from_user.first_name)
-    q = await get_new_q(user)
-    await send_first_q(q, message)
+    data = await state.get_data()
+    if data:
+        original_id = data.get("original")
+        q = await translate_db.get_original(original_id)
+    else:
+        q = await get_new_q(user)
+    await send_first_q(q, message, state)
 
 
 async def new_message(message: types.Message, translations, text, original):
@@ -56,10 +62,10 @@ async def get_new_q(user):
         return q
 
 
-async def send_first_q(q, message):
+async def send_first_q(q, message, state: FSMContext):
     yandex, tatsoft, google = await get_translates(q)
     data = await get_translations_dict(yandex, tatsoft, google)
-    text = f"Какой перевод для данного предложения лучше?\n<b>{q.string}</b>\n\n"
+    text = f"Какой перевод для данного предложения лучше?\n\n<b>{q.string}</b>\n\n"
     if data["C"] == 1:
         for k, v in data["Q"].items():
             text += f"{list(data['Q'].keys()).index(k) + 1}){v.translate}\n"
@@ -67,6 +73,7 @@ async def send_first_q(q, message):
         await new_message(message, data["Q"], text, q)
     else:
         await UserState.first.set()
-        text += f"1){google.translate}\n2){yandex.translate}"
+        text += f"1) {google.translate}\n2) {yandex.translate}"
         translations = {"G": data["Q"]["G"], "Y": data["Q"]["Y"]}
         await new_message(message, translations, text, q)
+    await state.update_data({"original": q})
